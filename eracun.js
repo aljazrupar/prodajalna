@@ -52,7 +52,7 @@ function davcnaStopnja(izvajalec, zanr) {
 
 
 streznik.get('/', function(zahteva, odgovor) {
- if(count == 1){
+ if(!zahteva.session.ID){
    odgovor.redirect('/prijava');
  }else{
   pb.all("SELECT Track.TrackId AS id, Track.Name AS pesem, \
@@ -246,6 +246,9 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
+    if(!zahteva.session.ID){
+    zahteva.session.ID = polja.seznamStrank;
+    }
     odgovor.redirect('/')
     
   });
@@ -253,7 +256,8 @@ streznik.post('/stranka', function(zahteva, odgovor) {
 
 // Odjava stranke
 streznik.post('/odjava', function(zahteva, odgovor) {
-    odgovor.redirect('/prijava') 
+    delete zahteva.session.ID;
+    odgovor.redirect('/prijava');
 })
 
 
