@@ -143,8 +143,8 @@ var strankaIzRacuna = function(racunId, callback) {
             WHERE Customer.CustomerId = Invoice.CustomerId AND Invoice.InvoiceId = " + racunId,
     function(napaka, vrstice) {
       callback(vrstice);
-    })
-}
+    });
+};
 /*
 // Izpis računa v HTML predstavitvi na podlagi podatkov iz baze
 streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) { // -_______________________________________________________________________________
@@ -166,26 +166,53 @@ streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) { // -_____________
   
 })
 */
+/*
 streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
+  
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function(napaka1, polja, datoteke) {
-    pesmiIzRacuna(polja.seznamRacunov, function(pesmi) {
-      strankaIzRacuna(polja.seznamRacunov, function(stranka) {
-        if(!pesmi ||!stranka)
+    strankaIzRacuna(polja.seznamRacunov, function(narocnikOseba) {
+      pesmiIzRacuna(polja.seznamRacunov, function(pesmi) {
+        if(!pesmi ||!narocnikOseba)
           odgovor.sendStatus(500);
         else {
           odgovor.setHeader('content-type', 'text/xml');
           odgovor.render('eslog', {
             vizualiziraj: true,
             postavkeRacuna: pesmi,
-            stranka: stranka[0]
+            stranka: narocnikOseba[0]
           })
         }
       });
     });
   });
 })
+*/
+streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
+  //console.log("-----------------zahteva-----------------");
+  //console.log(zahteva);
+  //console.log("-----------------odgovor-----------------");
+  //console.log(odgovor);
+  var form = new formidable.IncomingForm();
+  
+  form.parse(zahteva, function (napaka1, polja, datoteke) {
+    strankaIzRacuna(polja.seznamRacunov, function(stranka){
+      pesmiIzRacuna(polja.seznamRacunov, function(pesmi){
+        for(var i = 0; i<pesmi.length;i++){
+         pesmi[i].stopnja = davcnaStopnja(pesmi[i].opisArtikla.match(/\((.*?)\)/g), pesmi[i].zanr); //pesmim da pravilno davcno stopnjo
+        }
+        odgovor.setHeader('content-type', 'text/xml');
+          odgovor.render('eslog', {
+            vizualiziraj: true,
+            postavkeRacuna: pesmi,
+            stranka: stranka[0]
+          });
+        });
+    });
+  });
+  
+});
 
 // Izpis računa v HTML predstavitvi ali izvorni XML obliki
 streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
@@ -200,7 +227,6 @@ streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
       odgovor.render('eslog', {
         vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
         postavkeRacuna: pesmi
-        
       })  
     }
   })
