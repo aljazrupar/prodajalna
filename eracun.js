@@ -27,7 +27,6 @@ streznik.use(
 );
 
 
-var count = 1;
 var razmerje_usd_eur = 0.877039116;
 
 function davcnaStopnja(izvajalec, zanr) {
@@ -52,9 +51,11 @@ function davcnaStopnja(izvajalec, zanr) {
 
 
 streznik.get('/', function(zahteva, odgovor) {
+
  if(!zahteva.session.ID){
    odgovor.redirect('/prijava');
  }else{
+   
   pb.all("SELECT Track.TrackId AS id, Track.Name AS pesem, \
           Artist.Name AS izvajalec, Track.UnitPrice * " +
           razmerje_usd_eur + " AS cena, \
@@ -76,8 +77,8 @@ streznik.get('/', function(zahteva, odgovor) {
         odgovor.render('seznam', {seznamPesmi: vrstice});
       }
   })
- }
-})
+ 
+}
 
 
 // Dodajanje oz. brisanje pesmi iz košarice
@@ -145,7 +146,7 @@ var pesmiIzRacuna = function(racunId, callback) {
     Track.TrackId IN (SELECT InvoiceLine.TrackId FROM InvoiceLine, Invoice \
     WHERE InvoiceLine.InvoiceId = Invoice.InvoiceId AND Invoice.InvoiceId = " + racunId + ")",
     function(napaka, vrstice) {
-      console.log(vrstice);
+      callback(vrstice);
     })
 }
 
@@ -154,13 +155,28 @@ var strankaIzRacuna = function(racunId, callback) {
     pb.all("SELECT Customer.* FROM Customer, Invoice \
             WHERE Customer.CustomerId = Invoice.CustomerId AND Invoice.InvoiceId = " + racunId,
     function(napaka, vrstice) {
-      console.log(vrstice);
-    })
-}
+      callback(vrstice);
+    });
+};
 
 // Izpis računa v HTML predstavitvi na podlagi podatkov iz baze
-streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
-  odgovor.end();
+streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) { // -_______________________________________________________________________________
+
+  var form = new formidable.IncomingForm();
+  
+  form.parse(zahteva, function(napaka1,polja,datoteke){
+    
+    strankaIzRacuna(polja.seznamRacunov, function(stranka){
+      pesmiIzRacuna(polja.seznamRacunov, function(pesmi){
+       odgovor.setHeader('content-type', 'text/xml');
+        odgovor.render('eslog', {
+          vizualiziraj: true,
+          postavkeRacuna: pesmi,
+          oseba: stranka[0]
+        })
+      })
+    })
+  })
 })
 
 // Izpis računa v HTML predstavitvi ali izvorni XML obliki
@@ -196,7 +212,7 @@ var vrniStranke = function(callback) { // --------------------------------------
 }
 
 // Vrni račune iz podatkovne baze
-var vrniRacune = function(callback) {
+var vrniRacune = function(callback) { 
   pb.all("SELECT Customer.FirstName || ' ' || Customer.LastName || ' (' || Invoice.InvoiceId || ') - ' || date(Invoice.InvoiceDate) AS Naziv, \
           Invoice.InvoiceId \
           FROM Customer, Invoice \
@@ -252,7 +268,7 @@ streznik.post('/prijava', function(zahteva, odgovor) {
 streznik.get('/prijava', function(zahteva, odgovor) {
   vrniStranke(function(napaka1, stranke) {
       vrniRacune(function(napaka2, racuni) {
-        count = 0;
+        
         odgovor.render('prijava', {sporocilo: "", seznamStrank: stranke, seznamRacunov: racuni});  
       }) 
     });
@@ -283,3 +299,4 @@ streznik.post('/odjava', function(zahteva, odgovor) {
 streznik.listen(process.env.PORT, function() {
   console.log("Strežnik pognan!");
 })
+
